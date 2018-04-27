@@ -115,12 +115,9 @@ namespace Deng
 		inline Col operator*(const float& k, const Col& r_vec)//scalar multiplication
 		{
 			const size_t dim = r_vec.size();
-			Col a(dim);
-			a.zeros();
+			auto a = r_vec;
 
-			cublasSaxpy(cublas_handler, dim, &k,
-				r_vec._vec, 1,
-				a._vec, 1);
+			cublasSscal(cublas_handler, dim, &k, a._vec, 1);
 
 			return a;
 		}
