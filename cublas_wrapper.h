@@ -7,6 +7,7 @@
 #include <cuda.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
+#include <curand.h>
 #include "device_launch_parameters.h"
 
 //define vectors
@@ -17,7 +18,8 @@ namespace Deng
 
 		static cublasHandle_t cublas_handler;
 		static cublasStatus_t cublas_status = cublasCreate_v2(&cublas_handler);
-		
+		static 	curandGenerator_t gen;
+
 		class Col;
 
 		//addition
@@ -69,6 +71,20 @@ namespace Deng
 			void operator*=(const float k);//scalar multiplication
 			void operator*=(const Col& b);//element-wise multiplication
 														//element access
+
+
+			static void rand_seed()
+			{
+				curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
+				time_t seed;
+				time(&seed);
+				curandSetPseudoRandomGeneratorSeed(gen, seed);
+			}
+			void rand_normal(float std_dev = 1.0, float average = 0.0)
+			{
+				curandGenerateNormal(gen, _vec, _dim, average, std_dev);
+			}
+
 
 			//non-member operator
 			//negative

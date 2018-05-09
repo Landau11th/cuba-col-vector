@@ -23,7 +23,6 @@ int main(int argc, char * argv[])
 {
 	const size_t n = 32;
 	float* vec_host = new float[n];
-	std::cout << vec_host << std::endl;
 	for (size_t i = 0; i < n; ++i)
 	{
 		vec_host[i] = i;
@@ -31,7 +30,9 @@ int main(int argc, char * argv[])
 	
 	Deng::CUDA_Vec::Col a(vec_host, n);
 	Deng::CUDA_Vec::Col b(vec_host, n);
-	b = (-1.5)*a;
+	b.rand_seed();
+	b.rand_normal(0.001);
+	b = a + b;
 
 	std::cout << b.size() << std::endl;
 	float* out = b.to_host();
