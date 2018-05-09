@@ -33,11 +33,18 @@ namespace Deng
 		protected:
 			size_t _dim;
 			float* _vec;//vector of the number field
+
+			//need a static data member to indicate CUDA runtime error
+			//for cudaMemcpy and other functions
+
 		public:
 			Col();//default constructor, set _vec to nullptr
 			Col(size_t dim);//constructor
 			Col(const Col& c);//copy constructor
 			Col(Col&& c);//move constructor
+			Col(float* vec_host, size_t n);
+
+			float* to_host();
 
 			//change the size of the column vector
 			void set_size(size_t dim);
@@ -65,11 +72,11 @@ namespace Deng
 
 			//non-member operator
 			//negative
-			Col& operator- ()
+			Col operator- ()
 			{
 				Col a(this->size());
 				a.zeros();
-
+				a = a - *this;
 				return a;
 			}
 
@@ -84,16 +91,15 @@ namespace Deng
 
 
 		const float one = 1.0;
+		const float minus_one = -1.0;
 		//addition
 		inline Col operator+(const Col& l_vec, const Col& r_vec)//addition
 		{
 			size_t dim = l_vec.size();
 			assert((dim == r_vec.size()) && "Dimension mismatch in + (vector addition)!");
 
-			auto a = r_vec;
-			cublasSaxpy(cublas_handler, dim, &one,
-				l_vec._vec, 1,
-				a._vec, 1);
+			auto a = l_vec;
+			cublasSaxpy(cublas_handler, dim, &one, r_vec._vec, 1, a._vec, 1);
 
 			return a;
 		}
@@ -103,11 +109,8 @@ namespace Deng
 			const size_t dim = l_vec.size();
 			assert((dim == r_vec.size()) && "Dimension mismatch in - (vector subtraction)!");
 
-			auto a = r_vec;
-			a = -a;
-			cublasSaxpy(cublas_handler, dim, &one,
-				l_vec._vec, 1,
-				a._vec, 1);
+			Col a = l_vec;
+			cublasSaxpy(cublas_handler, dim, &minus_one, r_vec._vec, 1, a._vec, 1);
 
 			return a;
 		}
@@ -116,9 +119,7 @@ namespace Deng
 		{
 			const size_t dim = r_vec.size();
 			auto a = r_vec;
-
 			cublasSscal(cublas_handler, dim, &k, a._vec, 1);
-
 			return a;
 		}
 

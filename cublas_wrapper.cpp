@@ -24,6 +24,18 @@ Col::Col(Col&& c)//move constructor
 	_vec = c._vec;
 	c._vec = nullptr;
 }
+Col::Col(float* vec_host, size_t n)
+{
+	_dim = n;
+	cudaMalloc((void **)& _vec, _dim * sizeof(float));
+	cudaMemcpy(_vec, vec_host, _dim * sizeof(float), cudaMemcpyHostToDevice);
+}
+float* Col::to_host()
+{
+	float* vec_host = new float[_dim];
+	cudaMemcpy(vec_host, _vec, _dim * sizeof(float), cudaMemcpyDeviceToHost);
+	return vec_host;
+}
 void Col::set_size(size_t dim)
 {
 	//if the size is already dim, there is no need to change
