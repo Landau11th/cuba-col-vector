@@ -2,7 +2,8 @@
 
 #include <iostream>
 
-#include<cassert>
+#include <cassert>
+#include <ctime>
 
 #include <cuda.h>
 #include <cublas_v2.h>
@@ -15,20 +16,22 @@ namespace Deng
 {
 	namespace CUDA_Vec
 	{
-
+		//cublas status
 		static cublasHandle_t cublas_handler;
 		static cublasStatus_t cublas_status = cublasCreate_v2(&cublas_handler);
-		static 	curandGenerator_t gen;
-
+		
 		class Col;
 
-		//addition
-		Col operator+(const Col& l_vec, const Col& r_vec);
-		//subtraction
-		Col operator-(const Col& l_vec, const Col& r_vec);
-		//scalar multiplication
-		Col operator*(const float& k, const Col& r_vec);
-		
+		//binary operators
+		Col operator+(const Col& l_vec, const Col& r_vec);//addition
+		Col operator-(const Col& l_vec, const Col& r_vec);//subtraction
+		Col operator*(const float& k, const Col& r_vec);//scalar multiplication
+		Col operator*(const Col& l_vec, const Col& r_vec);//element-wise vector multiplication
+
+		//curand generator
+		static curandGenerator_t gen;
+		void rand_seed();//set random seed
+		Col rand_normal(const size_t n, const float average = 0.0, const float std_dev = 1.0);//generate normal random sequence
 
 		class Col
 		{
@@ -36,7 +39,7 @@ namespace Deng
 			size_t _dim;
 			float* _vec;//vector of the number field
 
-			//need a static data member to indicate CUDA runtime error
+			//may need a static data member to indicate CUDA runtime error
 			//for cudaMemcpy and other functions
 
 		public:
@@ -44,100 +47,34 @@ namespace Deng
 			Col(size_t dim);//constructor
 			Col(const Col& c);//copy constructor
 			Col(Col&& c);//move constructor
-			Col(float* vec_host, size_t n);
+			Col(float* vec_host, size_t n);//read data from a host array
+			~Col();//destructor. Could be virtual
 
-			float* to_host();
-
-			//change the size of the column vector
-			void set_size(size_t dim);
-			//returns _dim, size fo the column vector
-			size_t size() const { return _dim; };
-			//set the vector to be 0
-			void zeros();
-			//destructor. Could be virtual
-			//virtual
-			~Col();
-
-			//overloading operators
-			//member functions
-			//copy assignment operator
-			Col& operator=(const Col& rhs);
-			//move constructor
-			Col& operator=(Col&&rhs) noexcept;
-			//other assignment operator
+			//overloading operators as member functions
+			Col& operator=(const Col& rhs);//copy assignment operator
+			Col& operator=(Col&&rhs) noexcept;//move assignment operator
 			//be careful with these operators!!!!!
+			Col operator- ();//negation
 			void operator+=(const Col& rhs);
 			void operator-=(const Col& rhs);
 			void operator*=(const float k);//scalar multiplication
 			void operator*=(const Col& b);//element-wise multiplication
-														//element access
-
-
-			static void rand_seed()
-			{
-				curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
-				time_t seed;
-				time(&seed);
-				curandSetPseudoRandomGeneratorSeed(gen, seed);
-			}
-			void rand_normal(float std_dev = 1.0, float average = 0.0)
-			{
-				curandGenerateNormal(gen, _vec, _dim, average, std_dev);
-			}
-
-
-			//non-member operator
-			//negative
-			Col operator- ()
-			{
-				Col a(this->size());
-				a.zeros();
-				a = a - *this;
-				return a;
-			}
-
-			//addition
-			friend Col operator+(const Col& l_vec, const Col& r_vec);
-			//subtraction
-			friend Col operator-(const Col& l_vec, const Col& r_vec);
-			//scalar multiplication
-			friend Col operator*(const float& k, const Col& r_vec);			
+			
+			//member functions
+			float* to_host();//copy the data in the device array to a host array
+			void set_size(size_t dim);//change the size of the column vector
+			size_t size() const { return _dim; };//returns _dim, size of the column vector
+			void zeros();//set the elements to 0
+			
+			friend Col operator+(const Col& l_vec, const Col& r_vec);//addition
+			friend Col operator-(const Col& l_vec, const Col& r_vec);//subtraction
+			friend Col operator*(const float& k, const Col& r_vec);//scalar multiplication
+			friend Col rand_normal(const size_t, const float average, const float std_dev);
+			friend Col operator*(const Col& l_vec, const Col& r_vec);//element-wise vector multiplication
 
 		};
 
 
-		const float one = 1.0;
-		const float minus_one = -1.0;
-		//addition
-		inline Col operator+(const Col& l_vec, const Col& r_vec)//addition
-		{
-			size_t dim = l_vec.size();
-			assert((dim == r_vec.size()) && "Dimension mismatch in + (vector addition)!");
-
-			auto a = l_vec;
-			cublasSaxpy(cublas_handler, dim, &one, r_vec._vec, 1, a._vec, 1);
-
-			return a;
-		}
-		//subtraction
-		inline Col operator-(const Col& l_vec, const Col& r_vec)//subtraction
-		{
-			const size_t dim = l_vec.size();
-			assert((dim == r_vec.size()) && "Dimension mismatch in - (vector subtraction)!");
-
-			Col a = l_vec;
-			cublasSaxpy(cublas_handler, dim, &minus_one, r_vec._vec, 1, a._vec, 1);
-
-			return a;
-		}
-		//scalar multiplication
-		inline Col operator*(const float& k, const Col& r_vec)//scalar multiplication
-		{
-			const size_t dim = r_vec.size();
-			auto a = r_vec;
-			cublasSscal(cublas_handler, dim, &k, a._vec, 1);
-			return a;
-		}
 
 	}
 }
